@@ -1,0 +1,10 @@
+pandas
+gspread
+oauth2client
+google-auth
+google-analytics-data
+google-api-python-client
+selenium
+webdriver-manager
+requests
+beautifulsoup4
