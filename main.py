@@ -94,7 +94,7 @@ def get_medium_data():
         # 简单查找逻辑
         html = driver.page_source
         soup = BeautifulSoup(html, 'html.parser')
-        target = soup.find(string=lambda t: t and 'Followers' in t)
+        target = soup.find(string=lambda t: t and 'followers' in t)
         if target:
             num = target.strip().split(' ')[0]
             if 'K' in num: num = float(num.replace('K',''))*1000
