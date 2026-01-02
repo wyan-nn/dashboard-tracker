@@ -1,0 +1,35 @@
+name: Weekly Social Media Update
+
+on:
+  schedule:
+    # 这里的 cron 语法表示: 每周一 新加坡时间早上 9点 (UTC 1点) 运行
+    - cron: '0 1 * * 1'
+  workflow_dispatch: # 允许你手动点击按钮触发测试
+
+jobs:
+  update-sheet:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Chrome & Driver
+        # 这里使用一个特殊的 Action 自动安装 Chrome 浏览器环境
+        uses: browser-actions/setup-chrome@latest
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run script
+        env:
+          GCP_CLIENT_ID: ${{ secrets.GCP_CLIENT_ID }}
+          GCP_CLIENT_SECRET: ${{ secrets.GCP_CLIENT_SECRET }}
+          GCP_REFRESH_TOKEN: ${{ secrets.GCP_REFRESH_TOKEN }}
+        run: python main.py
