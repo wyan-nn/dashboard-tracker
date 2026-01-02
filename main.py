@@ -1,7 +1,7 @@
 import os
 import time
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 import gspread
 from google.oauth2.credentials import Credentials 
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
