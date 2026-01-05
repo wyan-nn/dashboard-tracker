@@ -2,9 +2,8 @@ name: Weekly Social Media Update
 
 on:
   schedule:
-    # 这里的 cron 语法表示: 每周一 新加坡时间早上 9点 (UTC 1点) 运行
-    - cron: '0 1 * * 1'
-  workflow_dispatch: # 允许你手动点击按钮触发测试
+    - cron: '17 1 * * 1'
+  workflow_dispatch:
 
 jobs:
   update-sheet:
