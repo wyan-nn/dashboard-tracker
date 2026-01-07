@@ -165,7 +165,10 @@ def analyze_and_push(ga4_data, social_data, date_range_str):
             config=types.GenerateContentConfig(temperature=0.6) 
         )
         msg = response.text.replace("**", "") 
-        
+
+        if "Subject:" in msg:
+            msg = msg.split("Subject:")[1].split("\n", 1)[1].strip()
+
         final_msg = "🚀 Marketing Weekly Pulse\n\n" + msg
         
         requests.post(LARK_WEBHOOK_URL, json={"msg_type": "text", "content": {"text": final_msg}})
