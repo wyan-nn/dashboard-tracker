@@ -54,7 +54,7 @@ def get_ga4_data(creds, r_s, r_e, c_s, c_e):
         pct = ((curr - prev) / prev) * 100 if prev > 0 else 0
         report['users'] = f"{curr} ({pct:+.1f}%)"
 
-        # 2. 注册意向 (Sign Up Intent)
+        # 2. 注册意向 (Top 7)
         res_intent = client.run_report(RunReportRequest(
             property=prop_path, date_ranges=[DateRange(start_date=r_s, end_date=r_e)], 
             dimensions=[Dimension(name="country")], metrics=[Metric(name="eventCount")],
@@ -66,7 +66,7 @@ def get_ga4_data(creds, r_s, r_e, c_s, c_e):
         report['intent'] = f"{total_intent} signals"
         report['top_intent_country'] = top_countries
 
-        # 3. 📱 APP 下载意向
+        # 3. App 下载意向 (Web Button Clicks)
         res_app = client.run_report(RunReportRequest(
             property=prop_path, date_ranges=[DateRange(start_date=r_s, end_date=r_e)], 
             metrics=[Metric(name="eventCount")],
@@ -75,7 +75,7 @@ def get_ga4_data(creds, r_s, r_e, c_s, c_e):
         app_clicks = int(res_app.rows[0].metric_values[0].value) if res_app.rows else 0
         report['app_clicks'] = str(app_clicks)
 
-        # 4. 渠道
+        # 4. 渠道 (Top 7)
         res_src = client.run_report(RunReportRequest(
             property=prop_path, date_ranges=[DateRange(start_date=r_s, end_date=r_e)], 
             dimensions=[Dimension(name="sessionSourceMedium")], metrics=[Metric(name="activeUsers")],
@@ -84,7 +84,10 @@ def get_ga4_data(creds, r_s, r_e, c_s, c_e):
         
         src_list = []
         for r in res_src.rows:
-            source_name = r.dimension_values[0].value.replace("t.co", "X (Twitter)")
+            source_name = r.dimension_values[0].value
+            if "t.co" in source_name:
+                source_name = source_name.replace("t.co", "X (Twitter)")
+            
             src_list.append(f"{source_name}({r.metric_values[0].value})")
             
         report['channels'] = ", ".join(src_list)
@@ -134,21 +137,21 @@ def analyze_and_push(ga4_data, social_data, date_range_str):
     1. Web Traffic: {ga4_data['users']} (Active Users & Trend).
     2. Intent Breakdown:
        - **Web Sign-Up Intent**: {ga4_data['intent']} (Top Geos: {ga4_data['top_intent_country']}).
-       - **App Download Intent**: {ga4_data['app_clicks']} (This is a key new metric. If > 0, highlight mobile interest).
+       - **Web-Driven App Clicks**: {ga4_data['app_clicks']} (Metric: '{DOWNLOAD_EVENT_NAME}').
     3. Channel Mix: {ga4_data['channels']}.
     4. Social Media: "{social_data}" (If pending, mention tracking is underway).
     
-    **Writing Instructions:**
+    **Writing Instructions (Refined):**
     
-    1.  **Opening:** Ultra-concise summary (Max 15 words).
-    2.  **Smart Analysis:** - Combine Web Intent and App Interest. E.g. "We saw {ga4_data['intent']} sign-up signals and {ga4_data['app_clicks']} app download clicks..."
+    1.  **Opening:** Ultra-concise (Max 15 words). No fluff.
+    2.  **Smart Analysis:** - Combine Web Intent and App Interest.
+        - **Nuance on App Data (Important):** If 'App Clicks' is 0, do NOT say "no one downloaded the app". Say "no web-originated app clicks were recorded". Acknowledge that users may still download directly from Stores.
         - Identify outliers in Channels and Geos.
-        - Treat 't.co' as X (Twitter).
     3.  **Structure:**
         - **Header:** "Hi Team,"
         - **Intro:** Punchy summary.
         - **Section 1: 「Web Traffic」**
-        - **Section 2: 「Growth & Intent」** (Discuss BOTH Sign-ups and App Downloads).
+        - **Section 2: 「Growth & Intent」** (Discuss Sign-ups. Handle App data carefully as instructed above).
         - **Section 3: 「Channel & Social」**
         - **Closing:** "Best,"
     4.  **Format:** Use parentheses `( )` for numbers. NO Markdown bold (**).
