@@ -1,0 +1,42 @@
+name: Weekly Marketing Report
+
+# 触发机制：定时运行
+on:
+  schedule:
+    # 这里的每一行代表一个时间点 (格式是 UTC 时间)
+    # 新加坡是 UTC+8
+    # 我们想要: 新加坡周一中午 12:00 (确保 11点的数据更新完毕)
+    # 换算成 UTC 就是: 04:00
+    - cron: '0 2 * * 1'
+  
+  # 允许手动点击按钮触发 (方便测试)
+  workflow_dispatch:
+
+jobs:
+  run-report:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1.哪怕代码库
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. 安装 Python 环境
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      # 3. 安装依赖库 (和你 Colab 里装的一样)
+      - name: Install dependencies
+        run: |
+          pip install google-analytics-data google-genai pandas requests gspread
+
+      # 4. 运行脚本
+      - name: Run Agent Script
+        env:
+          # 如果你的 Python 代码里写死了 Key，这里其实可以不填
+          # 但为了安全，建议以后把 Key 放在 GitHub Secrets 里，然后在这里引用
+          # 目前为了让你先跑通，只要 agent.py 里有 Key，这步直接跑就行
+          PYTHONUNBUFFERED: 1
+        run: python agent.py
