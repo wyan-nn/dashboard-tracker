@@ -23,6 +23,7 @@ GA4_PROPERTY_ID = "347977871"
 SPREADSHEET_ID = "1veYNmir-oqbmbnvGvVZGixnTArz8TXLALDvLE9rQ14Q"
 SHEET_NAME = "2026" 
 SIGNUP_EVENT_NAME = "sign_up_intent" 
+DOWNLOAD_EVENT_NAME = "download_intent"
 
 
 def get_creds():
@@ -37,14 +38,13 @@ def get_creds():
         client_secret=GCP_CLIENT_SECRET
     )
 
-# --- 模块 A: GA4 (视野扩大版) ---
 def get_ga4_data(creds, r_s, r_e, c_s, c_e):
     client = BetaAnalyticsDataClient(credentials=creds, transport="rest")
     prop_path = f"properties/{GA4_PROPERTY_ID}"
     report = {}
 
     try:
-        # 1. 流量
+        # 1. Web 流量
         res_curr = client.run_report(RunReportRequest(property=prop_path, date_ranges=[DateRange(start_date=r_s, end_date=r_e)], metrics=[Metric(name="activeUsers")]))
         curr = int(res_curr.rows[0].metric_values[0].value) if res_curr.rows else 0
         
@@ -54,7 +54,7 @@ def get_ga4_data(creds, r_s, r_e, c_s, c_e):
         pct = ((curr - prev) / prev) * 100 if prev > 0 else 0
         report['users'] = f"{curr} ({pct:+.1f}%)"
 
-        # 2. 意向 (Top 7)
+        # 2. 注册意向 (Sign Up Intent)
         res_intent = client.run_report(RunReportRequest(
             property=prop_path, date_ranges=[DateRange(start_date=r_s, end_date=r_e)], 
             dimensions=[Dimension(name="country")], metrics=[Metric(name="eventCount")],
@@ -66,21 +66,25 @@ def get_ga4_data(creds, r_s, r_e, c_s, c_e):
         report['intent'] = f"{total_intent} signals"
         report['top_intent_country'] = top_countries
 
-        # 3. 渠道 (Top 7 + 数据清洗)
+        # 3. 📱 APP 下载意向
+        res_app = client.run_report(RunReportRequest(
+            property=prop_path, date_ranges=[DateRange(start_date=r_s, end_date=r_e)], 
+            metrics=[Metric(name="eventCount")],
+            dimension_filter=FilterExpression(filter=Filter(field_name="eventName", string_filter=Filter.StringFilter(value=DOWNLOAD_EVENT_NAME)))
+        ))
+        app_clicks = int(res_app.rows[0].metric_values[0].value) if res_app.rows else 0
+        report['app_clicks'] = str(app_clicks)
+
+        # 4. 渠道
         res_src = client.run_report(RunReportRequest(
             property=prop_path, date_ranges=[DateRange(start_date=r_s, end_date=r_e)], 
             dimensions=[Dimension(name="sessionSourceMedium")], metrics=[Metric(name="activeUsers")],
             order_bys=[OrderBy(metric=OrderBy.MetricOrderBy(metric_name="activeUsers"), desc=True)], limit=7
         ))
         
-        # 🧼 数据清洗：把 t.co 替换为 X (Twitter)
         src_list = []
         for r in res_src.rows:
-            source_name = r.dimension_values[0].value
-            # 这里做替换
-            if "t.co" in source_name:
-                source_name = source_name.replace("t.co", "X (Twitter)")
-            
+            source_name = r.dimension_values[0].value.replace("t.co", "X (Twitter)")
             src_list.append(f"{source_name}({r.metric_values[0].value})")
             
         report['channels'] = ", ".join(src_list)
@@ -97,7 +101,7 @@ def get_sheet_data(creds, target_date_obj):
         worksheet = sh.worksheet(SHEET_NAME)
         
         target_str = f"{target_date_obj.day}/{target_date_obj.month}/{target_date_obj.year}"
-        print(f"Testing Date: 查找日期 {target_str}...")
+        print(f"Testing Date: {target_str}...")
         
         cell = None
         try:
@@ -106,17 +110,14 @@ def get_sheet_data(creds, target_date_obj):
             pass
             
         if cell is None:
-            print(f"⚠️ Warning: 表格中未找到 {target_str}。")
             return "Data pending update in Sheet"
 
         row_values = worksheet.row_values(cell.row)
         def get_col(idx): return row_values[idx] if len(row_values) > idx else "N/A"
-        
-        # H=7, N=13, P=15
         return f"Twitter: {get_col(7)}, Medium: {get_col(13)}, YouTube: {get_col(15)}"
 
     except Exception as e:
-        print(f"❌ Sheet Logic Error: {e}")
+        print(f"❌ Sheet Error: {e}")
         return "Sheet connection issue"
 
 def analyze_and_push(ga4_data, social_data, date_range_str):
@@ -131,20 +132,23 @@ def analyze_and_push(ga4_data, social_data, date_range_str):
     
     **Raw Data Inputs:**
     1. Web Traffic: {ga4_data['users']} (Active Users & Trend).
-    2. Intent ('{SIGNUP_EVENT_NAME}'): Total {ga4_data['intent']}. Breakdown: {ga4_data['top_intent_country']}.
+    2. Intent Breakdown:
+       - **Web Sign-Up Intent**: {ga4_data['intent']} (Top Geos: {ga4_data['top_intent_country']}).
+       - **App Download Intent**: {ga4_data['app_clicks']} (This is a key new metric. If > 0, highlight mobile interest).
     3. Channel Mix: {ga4_data['channels']}.
-    4. Social Media: "{social_data}" (If error/pending, briefly mention tracking is in progress).
+    4. Social Media: "{social_data}" (If pending, mention tracking is underway).
     
-    **Writing Instructions (Refined):**
+    **Writing Instructions:**
     
-    1.  **Opening:** Ultra-concise. ONE short sentence (Max 15 words). No "Hope you had a great week" fluff. Go straight to the performance summary.
-    2.  **Smart Analysis:** - Look at the Channel & Intent list. **Do not just list the top 3.** - Identify outliers. Is there a surprise in position #4 or #5? Mention it.
-        - **Note on 't.co':** I have already renamed it to 'X (Twitter)'. Treat it as a social referral source.
+    1.  **Opening:** Ultra-concise summary (Max 15 words).
+    2.  **Smart Analysis:** - Combine Web Intent and App Interest. E.g. "We saw {ga4_data['intent']} sign-up signals and {ga4_data['app_clicks']} app download clicks..."
+        - Identify outliers in Channels and Geos.
+        - Treat 't.co' as X (Twitter).
     3.  **Structure:**
-        - **Header:** Start with "Hi Team,"
+        - **Header:** "Hi Team,"
         - **Intro:** Punchy summary.
         - **Section 1: 「Web Traffic」**
-        - **Section 2: 「Growth & Intent」** (Deep dive into countries/regions).
+        - **Section 2: 「Growth & Intent」** (Discuss BOTH Sign-ups and App Downloads).
         - **Section 3: 「Channel & Social」**
         - **Closing:** "Best,"
     4.  **Format:** Use parentheses `( )` for numbers. NO Markdown bold (**).
@@ -159,8 +163,7 @@ def analyze_and_push(ga4_data, social_data, date_range_str):
         )
         msg = response.text.replace("**", "") 
         
-        # 🧼 强制添加标题 (双重保险)
-        final_msg = "📣 Marketing Weekly Pulse\n\n" + msg
+        final_msg = "🚀 Marketing Weekly Pulse\n\n" + msg
         
         requests.post(LARK_WEBHOOK_URL, json={"msg_type": "text", "content": {"text": final_msg}})
         print("✅ 推送成功！")
@@ -168,9 +171,6 @@ def analyze_and_push(ga4_data, social_data, date_range_str):
     except Exception as e:
         print(f"❌ AI Push Error: {e}")
 
-# ==========================================
-# 主程序
-# ==========================================
 if __name__ == "__main__":
     creds = get_creds()
     if creds:
