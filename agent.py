@@ -15,6 +15,10 @@ from google.genai import types
 from datetime import datetime, timedelta, date
 import calendar
 
+# ============
+TEST_MODE = True
+# ============
+
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 LARK_WEBHOOK_URL = os.environ.get("LARK_WEBHOOK_URL")
 GCP_CLIENT_ID = os.environ.get("GCP_CLIENT_ID")
@@ -228,15 +232,16 @@ def analyze_and_push(ga4_data, social_data, date_range_str):
         print(f"❌ AI Push Error: {e}")
 
 if __name__ == "__main__":
-    # 🗓️ 核心调度逻辑：检测今天是不是当月的第一个周一
     today = date.today()
     
-    # 逻辑：如果今天日期的 day > 7，说明肯定不是第一个周一，直接退出，不发报告。
-    # 这样我们可以保留 GitHub Action 每周一运行的设置，但只有每月第一次运行有效。
-    # ⚠️ 如果你想测试代码，请注释掉下面这两行！
-    if today.day > 7:
-        print(f"📅 今天是 {today}，不是本月的第一个周一，跳过月报推送。")
-        sys.exit(0)
+    if not TEST_MODE:
+        if today.day > 7:
+            print(f"📅 今天是 {today}，不是本月的第一个周一，生产模式下跳过推送。")
+            sys.exit(0)
+        else:
+            print("🚀 检测到今天是本月第一个周一，开始执行生产推送！")
+    else:
+        print("🔧 [调试模式] 强制执行月报逻辑 (Reporting Last Month)...")
 
     creds = get_creds()
     if creds:
@@ -246,8 +251,6 @@ if __name__ == "__main__":
         print(f">>> 启动月报 Agent: 报告周期 {r_s} 至 {r_e}")
         
         ga4_res = get_ga4_data(creds, r_s, r_e, c_s, c_e)
-        
-        # 获取上个月最后一个周一的数据作为 Sheet Snapshot
         sheet_res = get_sheet_data(creds, r_e)
         
         if ga4_res:
