@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, date
 import calendar
 
 # ============
-TEST_MODE = True
+TEST_MODE = False
 # ============
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
