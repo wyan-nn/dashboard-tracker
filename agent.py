@@ -12,7 +12,7 @@ from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import RunReportRequest, DateRange, Metric, Dimension, OrderBy, FilterExpression, Filter
 from google import genai
 from google.genai import types
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import calendar
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
