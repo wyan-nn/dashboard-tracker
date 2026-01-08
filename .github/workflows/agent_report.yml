@@ -3,7 +3,7 @@ name: Monthly Marketing Report
 on:
   schedule:
     # 新加坡时间周一中午 12:00 (UTC 04:00)
-    - cron: '0 2 * * 1'
+    - cron: '0 1 * * 1'
   workflow_dispatch:
 
 jobs:
